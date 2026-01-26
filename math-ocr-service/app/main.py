@@ -82,6 +82,68 @@ def preprocess_image(image: Image.Image) -> Image.Image:
     
     return image
 
+def create_formula_variants(image: Image.Image):
+    """Create multiple variants for formula recognition."""
+    variants = [("base", image)]
+
+    enhanced = ImageEnhance.Contrast(image).enhance(1.5)
+    enhanced = ImageEnhance.Sharpness(enhanced).enhance(1.4)
+    variants.append(("enhanced", enhanced))
+
+    try:
+        gray = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2GRAY)
+        gray = cv2.GaussianBlur(gray, (3, 3), 0)
+        thresh = cv2.adaptiveThreshold(
+            gray,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
+            31,
+            10
+        )
+        binarized = Image.fromarray(thresh).convert("RGB")
+        variants.append(("binarized", binarized))
+    except Exception as e:
+        logger.warning(f"Failed to build binarized variant: {e}")
+
+    return variants
+
+def score_latex(latex: str) -> float:
+    """Heuristic score for LaTeX output quality."""
+    if not latex:
+        return 0.0
+    clean = "".join(latex.split())
+    if not clean:
+        return 0.0
+
+    score = float(len(clean))
+    score += clean.count("\\") * 3.0
+    math_ops = ["=", "+", "-", "*", "/", "^", "_", "(", ")", "[", "]", "{", "}"]
+    score += sum(clean.count(op) for op in math_ops) * 1.5
+
+    # Penalize if it looks like plain text
+    op_count = sum(clean.count(op) for op in math_ops)
+    if op_count == 0 and clean.isalpha():
+        score *= 0.5
+
+    return score
+
+def run_pix2tex_best(image: Image.Image) -> str:
+    """Run Pix2Tex on multiple variants and return the best result."""
+    best_latex = ""
+    best_score = -1.0
+    for name, variant in create_formula_variants(image):
+        try:
+            latex = latex_ocr(variant).strip()
+        except Exception as e:
+            logger.warning(f"Pix2Tex failed on {name} variant: {e}")
+            continue
+        score = score_latex(latex)
+        if score > best_score:
+            best_score = score
+            best_latex = latex
+    return best_latex
+
 def crop_region(image: np.ndarray, bbox: List[List[int]]) -> Image.Image:
     """Crop specific region from image using bbox"""
     if not bbox:
@@ -147,7 +209,7 @@ def text_to_latex(text: str) -> str:
 @app.post("/ocr")
 async def ocr_endpoint(
     file: UploadFile = File(...),
-    strategy: str = "hybrid",  # hybrid | paddle_only | pix2tex_only
+    strategy: str = "hybrid",  # hybrid | mixed | text_only | paddle_only | pix2tex_only | formula_only
     language: str = "en"
 ):
     start_time = datetime.now()
@@ -166,8 +228,11 @@ async def ocr_endpoint(
         # STRATEGY: PIX2TEX ONLY
         # --------------------------------------------------
         if strategy == "pix2tex_only":
-            latex = latex_ocr(image).strip()
+            latex = run_pix2tex_best(image).strip()
+            if not latex:
+                latex = run_pix2tex_best(original_image).strip()
             if latex:
+                detected_formula = True
                 blocks.append({
                     "type": "formula",
                     "latex": latex,
@@ -183,9 +248,32 @@ async def ocr_endpoint(
                 })
 
         # --------------------------------------------------
-        # STRATEGY: PADDLE ONLY
+        # STRATEGY: FORMULA ONLY
         # --------------------------------------------------
-        elif strategy == "paddle_only":
+        elif strategy == "formula_only":
+            latex = run_pix2tex_best(image).strip()
+            if not latex:
+                latex = run_pix2tex_best(original_image).strip()
+            if latex:
+                detected_formula = True
+                blocks.append({
+                    "type": "formula",
+                    "latex": latex,
+                    "confidence": 0.96,
+                    "bbox": []
+                })
+            else:
+                blocks.append({
+                    "type": "text",
+                    "content": fallback_ocr(original_image) or "",
+                    "confidence": 0.35,
+                    "bbox": []
+                })
+
+        # --------------------------------------------------
+        # STRATEGY: PADDLE ONLY / TEXT ONLY
+        # --------------------------------------------------
+        elif strategy in ["paddle_only", "text_only"]:
             text = fallback_ocr(original_image) or fallback_ocr(image)
             if text:
                 blocks.append({
@@ -196,7 +284,7 @@ async def ocr_endpoint(
                 })
 
         # --------------------------------------------------
-        # STRATEGY: HYBRID (DEFAULT)
+        # STRATEGY: HYBRID / MIXED (DEFAULT)
         # --------------------------------------------------
         else:
             try:
@@ -223,7 +311,7 @@ async def ocr_endpoint(
                     # -------- FORMULA BLOCK --------
                     elif item_type in ["formula", "equation"]:
                         crop = crop_region(image_np, bbox)
-                        latex = latex_ocr(crop).strip()
+                        latex = run_pix2tex_best(crop).strip()
                         if latex:
                             detected_formula = True
                             blocks.append({
