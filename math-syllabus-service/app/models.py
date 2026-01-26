@@ -26,6 +26,7 @@ class LessonContentRequest(BaseModel):
   difficulty_level: DifficultyEnum
   exercises_count: int = Field(..., gt=0, le=5)
   quiz_count: int = Field(..., gt=0, le=5)
+  generate_images: bool = False
 
 class Lesson(BaseModel):
   lesson_number: int

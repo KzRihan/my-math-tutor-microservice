@@ -1,7 +1,15 @@
 import httpx
 import logging
 import asyncio
-from app.config import OLLAMA_BASE_URL, MODEL_NAME
+from app.config import (
+    OLLAMA_BASE_URL,
+    MODEL_NAME,
+    OLLAMA_KEEP_ALIVE,
+    OLLAMA_TEMPERATURE,
+    OLLAMA_TOP_P,
+    OLLAMA_NUM_CTX,
+    OLLAMA_NUM_PREDICT,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +38,15 @@ async def generate_text(prompt: str, max_retries: int = MAX_RETRIES) -> str:
     for attempt in range(max_retries):
         try:
             timeout = httpx.Timeout(300.0, connect=10.0)
+            options = {
+                "temperature": OLLAMA_TEMPERATURE,
+                "top_p": OLLAMA_TOP_P,
+            }
+            if OLLAMA_NUM_CTX:
+                options["num_ctx"] = int(OLLAMA_NUM_CTX)
+            if OLLAMA_NUM_PREDICT:
+                options["num_predict"] = int(OLLAMA_NUM_PREDICT)
+
             async with httpx.AsyncClient(timeout=timeout) as client:
                 response = await client.post(
                     f"{OLLAMA_BASE_URL}/api/generate",
@@ -37,11 +54,8 @@ async def generate_text(prompt: str, max_retries: int = MAX_RETRIES) -> str:
                         "model": MODEL_NAME,
                         "prompt": prompt,
                         "stream": False,
-                        "options": {
-                            # Lower temperature for more consistent JSON output
-                            "temperature": 0.7,
-                            "top_p": 0.9,
-                        }
+                        "keep_alive": OLLAMA_KEEP_ALIVE,
+                        "options": options,
                     }
                 )
 

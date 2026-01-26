@@ -11,6 +11,7 @@ from app.models import (
   Lesson
 )
 from app.llm import generate_text
+from app.diagram import generate_diagram, is_enabled as is_diagram_enabled
 
 # Configure logging
 logging.basicConfig(
@@ -307,6 +308,9 @@ STRICT RULES:
 as objects
 - Quiz questions: exactly {payload.quiz_count} questions as objects
 - No field can be empty
+- All exercises and quiz questions must be fully self-contained in text.
+- Do NOT reference images, diagrams, figures, or "the angle shown" unless you
+  also include a clear text description of the diagram within the question.
 
 Return ONLY a valid JSON object in this exact format \
 (no markdown, no code blocks, no extra text):
@@ -331,6 +335,34 @@ Remember: Output ONLY the JSON object, nothing else."""
     raw_output = await generate_text(full_prompt)
     logger.debug(f"Raw LLM output: {raw_output[:500]}")
     lesson_json = extract_json(raw_output)
+
+    if payload.generate_images and is_diagram_enabled():
+      keywords = [
+        "angle", "triangle", "circle", "square", "rectangle",
+        "line", "polygon", "perpendicular", "parallel",
+        "arc", "radius", "diameter",
+      ]
+
+      for ex in lesson_json.get("practice_exercises", []):
+        question = ex.get("question") or ex.get("exercise") or ""
+        if not question:
+          continue
+        if not any(k in question.lower() for k in keywords):
+          continue
+
+        prompt = (
+          "Simple black line math diagram on white background, "
+          "clean educational style, no shading, include labels if mentioned. "
+          f"Diagram for: {question}"
+        )
+
+        try:
+          image_base64 = await generate_diagram(prompt)
+          if image_base64:
+            ex["diagram_base64"] = image_base64
+            ex["diagram_prompt"] = prompt
+        except Exception as e:
+          logger.warning(f"Diagram generation failed: {str(e)}")
 
     lesson_obj = Lesson(**lesson_json)
     return LessonContentResponse(lesson=lesson_obj)
