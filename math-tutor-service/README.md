@@ -6,26 +6,28 @@ A Math Tutor Service that provides intelligent, Socratic-method-based mathematic
 
 ```
 math-tutor-service/
-├── app/
-│   ├── __init__.py
-│   ├── main.py                 # FastAPI application factory
-│   ├── core/
-│   │   ├── __init__.py
-│   │   └── config.py           # Configuration settings
-│   ├── models/
-│   │   ├── __init__.py
-│   │   └── schemas.py          # Pydantic request/response models
-│   ├── api/
-│   │   ├── __init__.py
-│   │   └── v1/
-│   │       ├── __init__.py
-│   │       └── routes.py       # API v1 routes
-│   └── services/
-│       ├── __init__.py
-│       ├── redis_service.py    # Redis session management
-│       └── ollama_service.py  # Ollama LLM service
-├── run.py                      # Application entry point
-└── README.md                   # This file
+|-- app/
+|   |-- __init__.py
+|   |-- main.py                 # FastAPI application factory
+|   |-- core/
+|   |   |-- __init__.py
+|   |   `-- config.py           # Configuration settings
+|   |-- models/
+|   |   |-- __init__.py
+|   |   `-- schemas.py          # Pydantic request/response models
+|   |-- api/
+|   |   |-- __init__.py
+|   |   `-- v1/
+|   |       |-- __init__.py
+|   |       `-- routes.py       # API v1 routes
+|   `-- services/
+|       |-- __init__.py
+|       |-- redis_service.py    # Redis session management
+|       `-- ollama_service.py   # Ollama LLM service
+|-- .env.example
+|-- requirements.txt
+|-- run.py                      # Application entry point
+`-- README.md
 ```
 
 ## Features
@@ -41,11 +43,13 @@ math-tutor-service/
 ## Installation
 
 1. Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
 2. Set up environment variables:
+
 ```bash
 # Copy the example environment file
 cp .env.example .env
@@ -59,11 +63,13 @@ cp .env.example .env
 ### Running the Application
 
 From the project root:
+
 ```bash
 python run.py
 ```
 
 Or using uvicorn directly:
+
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
@@ -123,6 +129,7 @@ All configuration is done through environment variables. The application loads s
 ### Setting Up Environment Variables
 
 1. Copy the example file:
+
    ```bash
    cp .env.example .env
    ```
@@ -134,10 +141,12 @@ All configuration is done through environment variables. The application loads s
 ### Available Configuration Variables
 
 ### Ollama Configuration
+
 - `OLLAMA_CHAT_URL`: Ollama API endpoint (default: `http://0.0.0.0:11434/api/chat`)
 - `MODEL_NAME`: Model to use for responses (default: `llama3.1:8b`)
 
 ### Redis Configuration
+
 - `REDIS_HOST`: Redis host (default: `localhost`)
 - `REDIS_PORT`: Redis port (default: `6379`)
 - `REDIS_DB`: Redis database number (default: `0`)
@@ -146,10 +155,12 @@ All configuration is done through environment variables. The application loads s
 - `REDIS_SESSION_TTL`: Session expiration time in seconds (default: `3600`)
 
 ### CORS Configuration
+
 - `CORS_ORIGINS`: Allowed CORS origins, comma-separated or `*` for all (default: `*`)
 - `CORS_ALLOW_CREDENTIALS`: Allow credentials in CORS (default: `true`)
 
 ### API Configuration
+
 - `API_TITLE`: API title (default: `Math Tutor Service`)
 - `API_VERSION`: API version (default: `1.0.0`)
 
@@ -173,31 +184,41 @@ The tutor never gives direct answers but instead guides students to discover sol
 ## Module Details
 
 ### `app/core/config.py`
+
 Manages all configuration settings including Ollama endpoints, Redis connection details, and system prompts.
 
 ### `app/models/schemas.py`
+
 Defines the API request/response models:
+
 - `ChatRequest`: Student message and session information
 - `ChatResponse`: Tutor's response message
 - `HealthResponse`: Service health status
 
 ### `app/services/redis_service.py`
+
 Handles conversation history storage and retrieval:
+
 - Maintains session-based conversation context
 - Manages session expiration and cleanup
 
 ### `app/services/ollama_service.py`
+
 Integrates with Ollama LLM for generating tutor responses:
+
 - Processes conversation history with system prompts
 - Supports both streaming and non-streaming modes
 
 ### `app/api/v1/routes.py`
+
 Exposes the REST API endpoints:
+
 - Health check for service monitoring
 - Chat endpoint for student-tutor interactions
 - Session management for conversation history
 
 ### `app/main.py`
+
 Initializes the FastAPI application with middleware and route configuration.
 
 ## Development
@@ -219,5 +240,6 @@ Initializes the FastAPI application with middleware and route configuration.
 ## API Documentation
 
 Once the server is running, visit:
+
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`

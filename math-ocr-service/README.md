@@ -4,6 +4,17 @@
 - Python 3.12+ installed
 - All dependencies from `requirements.txt`
 
+## Project Structure
+
+```
+math-ocr-service/
+├── app/
+│   ├── __init__.py
+│   └── main.py            # FastAPI app + OCR pipeline
+├── requirements.txt
+└── README.md
+```
+
 ## Installation Steps
 
 ### 1. Install Dependencies

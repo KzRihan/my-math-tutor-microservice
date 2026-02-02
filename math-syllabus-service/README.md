@@ -37,15 +37,16 @@ This approach ensures:
 ## 📁 Project Structure
 
 ```
-syllabus-service/
-├── app/
-│   ├── main.py          # FastAPI routes
-│   ├── models.py        # Pydantic schemas
-│   ├── llm.py           # Ollama LLM client
-│   └── config.py        # Configuration
-├── venv/
-├── requirements.txt
-└── README.md
+math-syllabus-service/
+|-- app/
+|   |-- config.py        # Configuration
+|   |-- diagram.py       # Stable Diffusion diagram helper
+|   |-- llm.py           # Ollama LLM client
+|   |-- main.py          # FastAPI routes
+|   `-- models.py        # Pydantic schemas
+|-- .venv/
+|-- requirements.txt
+`-- README.md
 ```
 
 ---
