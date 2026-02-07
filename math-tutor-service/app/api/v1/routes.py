@@ -8,9 +8,12 @@ from app.models.schemas import (
   ChatRequest,
   ChatResponse,
   HealthResponse,
+  RagIngestRequest,
+  RagIngestResponse,
 )
 from app.services.redis_service import redis_service
 from app.services.ollama_service import ollama_service
+from app.services.rag_service import rag_service
 from app.core.config import settings
 
 # Create router
@@ -58,9 +61,21 @@ async def chat(request: ChatRequest):
     "content": request.student_message,
   })
 
-  # Prepare messages with system prompt
+  # Prepare messages with system prompt (+ optional RAG context)
+  rag_context = await rag_service.get_context_message(
+    request.student_message
+  )
+  system_messages = [
+    {"role": "system", "content": settings.SYSTEM_PROMPT}
+  ]
+  if rag_context:
+    system_messages.append({
+      "role": "system",
+      "content": rag_context,
+    })
+
   messages = [
-    {"role": "system", "content": settings.SYSTEM_PROMPT},
+    *system_messages,
     *history,
   ]
 
@@ -109,6 +124,50 @@ async def chat(request: ChatRequest):
         status_code=500,
         detail=f"Error calling Ollama API: {str(e)}"
       )
+
+
+@router.post(
+  "/rag/ingest",
+  response_model=RagIngestResponse,
+  tags=["RAG"]
+)
+async def rag_ingest(request: RagIngestRequest):
+  """
+  Ingest documents into the RAG index
+
+  Args:
+    request: RAG ingest request with documents or source_dir
+
+  Returns:
+    Ingestion summary
+  """
+  if not settings.RAG_ENABLED:
+    raise HTTPException(
+      status_code=400,
+      detail="RAG is disabled (RAG_ENABLED=false)"
+    )
+
+  if request.documents:
+    doc_payloads = [
+      doc.model_dump() if hasattr(doc, "model_dump") else doc.dict()
+      for doc in request.documents
+    ]
+    result = await rag_service.ingest_documents(
+      documents=doc_payloads,
+      rebuild=request.rebuild,
+      source="inline",
+    )
+  else:
+    result = await rag_service.ingest_directory(
+      source_dir=request.source_dir,
+      rebuild=request.rebuild,
+    )
+
+  return RagIngestResponse(
+    indexed_documents=result.documents,
+    indexed_chunks=result.chunks,
+    source=str(result.source),
+  )
 
 
 @router.delete("/session/{session_id}", tags=["Session"])

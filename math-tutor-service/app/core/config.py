@@ -138,6 +138,54 @@ class Settings:
     "understanding.\n"
   )
 
+  # ============================================================
+  # RAG Configuration (Chroma + Ollama Embeddings)
+  # ============================================================
+  RAG_ENABLED: bool = (
+    os.getenv("RAG_ENABLED", "true").lower() == "true"
+  )
+  RAG_DB_DIR: str = os.getenv(
+    "RAG_DB_DIR",
+    str(BASE_DIR / "rag_db")
+  )
+  RAG_DOCS_DIR: str = os.getenv(
+    "RAG_DOCS_DIR",
+    str(BASE_DIR / "rag_docs")
+  )
+  RAG_COLLECTION_NAME: str = os.getenv(
+    "RAG_COLLECTION_NAME",
+    "math_tutor_rag"
+  )
+  RAG_TOP_K: int = int(os.getenv("RAG_TOP_K", "6"))
+  RAG_MIN_SCORE: float = float(
+    os.getenv("RAG_MIN_SCORE", "0.25")
+  )
+  RAG_MAX_CONTEXT_CHARS: int = int(
+    os.getenv("RAG_MAX_CONTEXT_CHARS", "4000")
+  )
+  RAG_CHUNK_SIZE: int = int(
+    os.getenv("RAG_CHUNK_SIZE", "800")
+  )
+  RAG_CHUNK_OVERLAP: int = int(
+    os.getenv("RAG_CHUNK_OVERLAP", "120")
+  )
+  RAG_AUTO_INGEST: bool = (
+    os.getenv("RAG_AUTO_INGEST", "false").lower() == "true"
+  )
+  RAG_BATCH_SIZE: int = int(
+    os.getenv("RAG_BATCH_SIZE", "32")
+  )
+
+  # Ollama Embeddings
+  OLLAMA_EMBED_URL: str = os.getenv(
+    "OLLAMA_EMBED_URL",
+    "http://0.0.0.0:11434/api/embeddings"
+  )
+  OLLAMA_EMBED_MODEL: str = os.getenv(
+    "OLLAMA_EMBED_MODEL",
+    "nomic-embed-text"
+  )
+
 
 # Create a singleton settings instance
 settings = Settings()

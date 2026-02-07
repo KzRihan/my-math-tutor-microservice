@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.api.v1.routes import router
+from app.services.rag_service import rag_service
 
 
 def create_app() -> FastAPI:
@@ -47,6 +48,12 @@ def create_app() -> FastAPI:
       "version": settings.API_VERSION,
       "docs": "/docs"
     }
+
+  # Optional: auto-ingest RAG documents on startup
+  @app.on_event("startup")
+  async def startup():
+    if settings.RAG_AUTO_INGEST:
+      await rag_service.ingest_directory(rebuild=False)
 
   return app
 

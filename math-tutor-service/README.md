@@ -164,6 +164,38 @@ All configuration is done through environment variables. The application loads s
 - `API_TITLE`: API title (default: `Math Tutor Service`)
 - `API_VERSION`: API version (default: `1.0.0`)
 
+### RAG Configuration (Local Chroma)
+
+- `RAG_ENABLED`: Enable retrieval-augmented generation (default: `true`)
+- `RAG_DB_DIR`: Local directory for Chroma persistence (default: `rag_db`)
+- `RAG_DOCS_DIR`: Directory of documents to ingest (default: `rag_docs`)
+- `RAG_COLLECTION_NAME`: Chroma collection name (default: `math_tutor_rag`)
+- `RAG_TOP_K`: Number of chunks to retrieve (default: `6`)
+- `RAG_MIN_SCORE`: Minimum similarity score for context (default: `0.25`)
+- `RAG_MAX_CONTEXT_CHARS`: Max context size injected into prompt (default: `4000`)
+- `RAG_CHUNK_SIZE`: Chunk size in characters (default: `800`)
+- `RAG_CHUNK_OVERLAP`: Overlap in characters between chunks (default: `120`)
+- `RAG_AUTO_INGEST`: Auto-ingest on startup (default: `false`)
+- `RAG_BATCH_SIZE`: Batch size for embeddings + inserts (default: `32`)
+
+### Ollama Embeddings
+
+- `OLLAMA_EMBED_URL`: Ollama embeddings endpoint (default: `http://0.0.0.0:11434/api/embeddings`)
+- `OLLAMA_EMBED_MODEL`: Embedding model (default: `nomic-embed-text`)
+
+## RAG Usage (Local Dev)
+
+1) Put your knowledge files in `rag_docs/` (supports `.md`, `.txt`, `.json`, `.jsonl`).
+2) Ingest them with the API:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/rag/ingest \
+  -H "Content-Type: application/json" \
+  -d '{"rebuild": true}'
+```
+
+3) Start chatting as usual; relevant context will be injected automatically.
+
 ## How It Works
 
 The Math Tutor API uses a structured teaching pipeline to guide students through mathematical concepts:

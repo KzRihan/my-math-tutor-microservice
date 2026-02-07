@@ -1,6 +1,8 @@
 """
 Pydantic models for request/response schemas
 """
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -55,3 +57,45 @@ class HealthResponse(BaseModel):
         "status": "healthy"
       }
     }
+
+
+class RagIngestDocument(BaseModel):
+  """Single document to ingest into the RAG index"""
+  text: str = Field(..., description="Raw text content")
+  metadata: Dict[str, Any] = Field(
+    default_factory=dict,
+    description="Optional metadata for filtering or attribution"
+  )
+  id: Optional[str] = Field(
+    default=None,
+    description="Optional stable document ID"
+  )
+
+
+class RagIngestRequest(BaseModel):
+  """Request model for RAG ingestion"""
+  documents: Optional[List[RagIngestDocument]] = Field(
+    default=None,
+    description="Optional list of documents to ingest"
+  )
+  source_dir: Optional[str] = Field(
+    default=None,
+    description="Optional local directory to ingest"
+  )
+  rebuild: bool = Field(
+    default=False,
+    description="Whether to rebuild the index from scratch"
+  )
+
+
+class RagIngestResponse(BaseModel):
+  """Response model for RAG ingestion"""
+  indexed_documents: int = Field(
+    ..., description="Number of documents indexed"
+  )
+  indexed_chunks: int = Field(
+    ..., description="Number of chunks stored"
+  )
+  source: str = Field(
+    ..., description="Ingestion source"
+  )
