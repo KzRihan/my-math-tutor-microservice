@@ -11,7 +11,11 @@ from app.models import (
   Lesson
 )
 from app.llm import generate_text
-from app.diagram import generate_diagram, is_enabled as is_diagram_enabled
+from app.diagram import (
+  generate_diagram,
+  generate_video,
+  is_enabled as is_diagram_enabled
+)
 
 # Configure logging
 logging.basicConfig(
@@ -21,6 +25,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Syllabus Service")
+
+def error_text(e: Exception) -> str:
+  text = str(e).strip()
+  return text if text else repr(e)
 
 def clean_json_text(text: str) -> str:
   """
@@ -268,12 +276,12 @@ Remember:
     )
   except Exception as e:
     logger.error(
-      f"Unexpected error in generate_lessons: {str(e)}", 
+      f"Unexpected error in generate_lessons: {error_text(e)}", 
       exc_info=True
     )
     raise HTTPException(
       status_code=500, 
-      detail=f"Internal server error: {str(e)}"
+      detail=f"Internal server error: {error_text(e)}"
     )
 
 @app.post("/generate-lesson-content", response_model=LessonContentResponse)
@@ -337,32 +345,59 @@ Remember: Output ONLY the JSON object, nothing else."""
     lesson_json = extract_json(raw_output)
 
     if payload.generate_images and is_diagram_enabled():
-      keywords = [
-        "angle", "triangle", "circle", "square", "rectangle",
-        "line", "polygon", "perpendicular", "parallel",
-        "arc", "radius", "diameter",
-      ]
+      max_images = 6
+      generated_count = 0
+
+      async def attach_image(item: dict, prompt_source: str, label: str) -> None:
+        nonlocal generated_count
+        if generated_count >= max_images:
+          return
+        if not isinstance(item, dict):
+          return
+        text = (prompt_source or "").strip()
+        if not text:
+          return
+
+        prompt = (
+          "Educational math illustration, simple black line drawing on white "
+          "background, clean diagram style, no watermark, no shading. "
+          f"{label}: {text}"
+        )
+
+        image_base64 = await generate_diagram(prompt)
+        if image_base64:
+          # Keep both keys for compatibility with different frontend consumers.
+          item["diagram_base64"] = image_base64
+          item["image_base64"] = image_base64
+          item["diagram_prompt"] = prompt
+          generated_count += 1
 
       for ex in lesson_json.get("practice_exercises", []):
         question = ex.get("question") or ex.get("exercise") or ""
-        if not question:
-          continue
-        if not any(k in question.lower() for k in keywords):
-          continue
+        await attach_image(ex, question, "Practice exercise")
 
-        prompt = (
-          "Simple black line math diagram on white background, "
-          "clean educational style, no shading, include labels if mentioned. "
-          f"Diagram for: {question}"
+      for ex in lesson_json.get("worked_examples", []):
+        text = ex.get("problem") or ex.get("example") or ex.get("title") or ""
+        await attach_image(ex, text, "Worked example")
+
+      for ex in lesson_json.get("quiz", []):
+        question = ex.get("question") or ""
+        await attach_image(ex, question, "Quiz question")
+
+      logger.info("Generated %s lesson image(s)", generated_count)
+
+    if payload.generate_videos and is_diagram_enabled():
+      try:
+        video_prompt = (
+          "Short educational math explainer animation for lesson "
+          f"'{payload.lesson_title}' in topic '{payload.topic_title}'. "
+          "Show step-by-step visual explanation in clear classroom style."
         )
-
-        try:
-          image_base64 = await generate_diagram(prompt)
-          if image_base64:
-            ex["diagram_base64"] = image_base64
-            ex["diagram_prompt"] = prompt
-        except Exception as e:
-          logger.warning(f"Diagram generation failed: {str(e)}")
+        video_url = await generate_video(video_prompt)
+        if video_url:
+          lesson_json["video_url"] = video_url
+      except Exception as e:
+        logger.warning(f"Video generation failed: {str(e)}")
 
     lesson_obj = Lesson(**lesson_json)
     return LessonContentResponse(lesson=lesson_obj)
@@ -383,10 +418,10 @@ Remember: Output ONLY the JSON object, nothing else."""
     )
   except Exception as e:
     logger.error(
-      f"Unexpected error in generate_lesson_content: {str(e)}", 
+      f"Unexpected error in generate_lesson_content: {error_text(e)}", 
       exc_info=True
     )
     raise HTTPException(
       status_code=500, 
-      detail=f"Internal server error: {str(e)}"
+      detail=f"Internal server error: {error_text(e)}"
     )

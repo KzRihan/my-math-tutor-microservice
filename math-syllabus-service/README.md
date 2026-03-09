@@ -1,8 +1,8 @@
-# Syllabus Service API
+﻿# Syllabus Service API
 
 A FastAPI microservice that generates **school-style syllabus content** using an open-source LLM (via Ollama). The service is designed to generate syllabus data **incrementally** to avoid token limits and improve reliability.
 
-## ✨ Features
+## âœ¨ Features
 
 * Generate **lesson titles** for a given topic
 * Generate **full lesson content** lesson-by-lesson
@@ -13,16 +13,16 @@ A FastAPI microservice that generates **school-style syllabus content** using an
 
 ---
 
-## 🏗 Architecture Overview
+## ðŸ— Architecture Overview
 
 ```
 Frontend
-  ├── Call /generate-lessons
-  │     → Get lesson titles
-  ├── Loop lessons
-  │     └── Call /generate-lesson-content
-  │           → Store lesson content
-  └── Assemble syllabus on frontend or backend
+  â”œâ”€â”€ Call /generate-lessons
+  â”‚     â†’ Get lesson titles
+  â”œâ”€â”€ Loop lessons
+  â”‚     â””â”€â”€ Call /generate-lesson-content
+  â”‚           â†’ Store lesson content
+  â””â”€â”€ Assemble syllabus on frontend or backend
 ```
 
 This approach ensures:
@@ -34,7 +34,7 @@ This approach ensures:
 
 ---
 
-## 📁 Project Structure
+## ðŸ“ Project Structure
 
 ```
 math-syllabus-service/
@@ -51,7 +51,7 @@ math-syllabus-service/
 
 ---
 
-## ⚙️ Requirements
+## âš™ï¸ Requirements
 
 * Python 3.9+
 * FastAPI
@@ -61,7 +61,7 @@ math-syllabus-service/
 
 ---
 
-## 🤖 LLM Setup (Ollama)
+## ðŸ¤– LLM Setup (Ollama)
 
 Install Ollama:
 
@@ -90,7 +90,7 @@ MODEL_NAME = "llama3.2:1b"
 
 ---
 
-## ▶️ Running the Service
+## â–¶ï¸ Running the Service
 
 Create virtual environment:
 
@@ -119,9 +119,9 @@ http://0.0.0.0:8503/docs
 
 ---
 
-## 📌 API Endpoints
+## ðŸ“Œ API Endpoints
 
-### 1️⃣ Generate Lesson Titles
+### 1ï¸âƒ£ Generate Lesson Titles
 
 **Endpoint**
 
@@ -159,7 +159,7 @@ POST /generate-lessons
 
 ---
 
-### 2️⃣ Generate Lesson Content
+### 2ï¸âƒ£ Generate Lesson Content
 
 **Endpoint**
 
@@ -176,7 +176,9 @@ POST /generate-lesson-content
   "grade": "primary",
   "difficulty_level": "medium",
   "exercises_count": 2,
-  "quiz_count": 2
+  "quiz_count": 2,
+  "generate_images": true,
+  "generate_videos": false
 }
 ```
 
@@ -200,7 +202,7 @@ POST /generate-lesson-content
 
 ---
 
-## 🧠 Why Lesson-by-Lesson Generation?
+## ðŸ§  Why Lesson-by-Lesson Generation?
 
 * Prevents token overflow
 * LLM does not need long-term memory
@@ -209,7 +211,7 @@ POST /generate-lesson-content
 
 ---
 
-## 🛡 Best Practices Used
+## ðŸ›¡ Best Practices Used
 
 * Strict JSON-only LLM prompts
 * Regex-based JSON extraction
@@ -219,7 +221,25 @@ POST /generate-lesson-content
 
 ---
 
-## 🚀 Scalability Notes
+## Stable Diffusion Media
+
+Set these environment variables before starting the service:
+
+```bash
+SD_API_URL=http://127.0.0.1:7860
+SD_TIMEOUT_SECONDS=120
+SD_WIDTH=384
+SD_HEIGHT=384
+SD_STEPS=12
+```
+
+When `generate_images=true`, the service attempts to add generated visuals to worked examples, practice exercises, and quiz questions.
+
+When `generate_videos=true`, the service attempts to call configured video endpoints (if supported by your Stable Diffusion extensions).
+
+---
+
+## ðŸš€ Scalability Notes
 
 * Can be horizontally scaled (no shared state)
 * Can swap LLM model without API changes
@@ -228,7 +248,7 @@ POST /generate-lesson-content
 
 ---
 
-## 🧪 Testing with curl
+## ðŸ§ª Testing with curl
 
 ```bash
 curl -X POST http://localhost:8503/generate-lessons \
@@ -240,3 +260,4 @@ curl -X POST http://localhost:8503/generate-lessons \
     "number_of_lessons": 3
   }'
 ```
+

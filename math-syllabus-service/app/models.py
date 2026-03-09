@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
 from enum import Enum
 
 
@@ -27,6 +27,7 @@ class LessonContentRequest(BaseModel):
   exercises_count: int = Field(..., gt=0, le=5)
   quiz_count: int = Field(..., gt=0, le=5)
   generate_images: bool = False
+  generate_videos: bool = False
 
 class Lesson(BaseModel):
   lesson_number: int
@@ -38,6 +39,7 @@ class Lesson(BaseModel):
   common_mistakes: List[str]
   practice_exercises: List[dict]
   quiz: List[dict]
+  video_url: Optional[str] = None
 
 class LessonsListResponse(BaseModel):
   topic: str

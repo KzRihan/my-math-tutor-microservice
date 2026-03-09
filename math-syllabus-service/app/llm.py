@@ -5,6 +5,10 @@ from app.config import (
     OLLAMA_BASE_URL,
     MODEL_NAME,
     OLLAMA_KEEP_ALIVE,
+    OLLAMA_CONNECT_TIMEOUT_SECONDS,
+    OLLAMA_READ_TIMEOUT_SECONDS,
+    OLLAMA_MAX_RETRIES,
+    OLLAMA_RETRY_DELAY_BASE,
     OLLAMA_TEMPERATURE,
     OLLAMA_TOP_P,
     OLLAMA_NUM_CTX,
@@ -13,12 +17,7 @@ from app.config import (
 
 logger = logging.getLogger(__name__)
 
-# Retry configuration
-MAX_RETRIES = 3
-RETRY_DELAY_BASE = 1.0  # seconds
-
-
-async def generate_text(prompt: str, max_retries: int = MAX_RETRIES) -> str:
+async def generate_text(prompt: str, max_retries: int = OLLAMA_MAX_RETRIES) -> str:
     """
     Generate text using Ollama LLM with retry logic.
 
@@ -37,7 +36,12 @@ async def generate_text(prompt: str, max_retries: int = MAX_RETRIES) -> str:
 
     for attempt in range(max_retries):
         try:
-            timeout = httpx.Timeout(300.0, connect=10.0)
+            timeout = httpx.Timeout(
+                connect=OLLAMA_CONNECT_TIMEOUT_SECONDS,
+                read=OLLAMA_READ_TIMEOUT_SECONDS,
+                write=60.0,
+                pool=60.0,
+            )
             options = {
                 "temperature": OLLAMA_TEMPERATURE,
                 "top_p": OLLAMA_TOP_P,
@@ -79,15 +83,15 @@ async def generate_text(prompt: str, max_retries: int = MAX_RETRIES) -> str:
             last_error = e
             if attempt < max_retries - 1:
                 # Exponential backoff
-                wait_time = RETRY_DELAY_BASE * (2 ** attempt)
+                wait_time = OLLAMA_RETRY_DELAY_BASE * (2 ** attempt)
                 logger.warning(
                     f"LLM request failed (attempt {attempt + 1}/{max_retries}): "
-                    f"{str(e)}. Retrying in {wait_time}s..."
+                    f"{repr(e)}. Retrying in {wait_time}s..."
                 )
                 await asyncio.sleep(wait_time)
             else:
                 logger.error(
-                    f"LLM request failed after {max_retries} attempts: {str(e)}"
+                    f"LLM request failed after {max_retries} attempts: {repr(e)}"
                 )
                 raise
         except ValueError as e:
@@ -97,10 +101,10 @@ async def generate_text(prompt: str, max_retries: int = MAX_RETRIES) -> str:
         except Exception as e:
             last_error = e
             if attempt < max_retries - 1:
-                wait_time = RETRY_DELAY_BASE * (2 ** attempt)
+                wait_time = OLLAMA_RETRY_DELAY_BASE * (2 ** attempt)
                 logger.warning(
                     f"Unexpected error in LLM request "
-                    f"(attempt {attempt + 1}/{max_retries}): {str(e)}. "
+                    f"(attempt {attempt + 1}/{max_retries}): {repr(e)}. "
                     f"Retrying in {wait_time}s..."
                 )
                 await asyncio.sleep(wait_time)
